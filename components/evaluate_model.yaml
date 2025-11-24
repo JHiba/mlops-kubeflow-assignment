@@ -1,0 +1,43 @@
+name: Evaluate model
+inputs:
+- {name: test_data, type: CSV}
+- {name: model_input, type: Model}
+outputs:
+- {name: mlpipeline_metrics, type: Metrics}
+implementation:
+  container:
+    image: docker.io/library/mlops-custom:v1
+    command:
+    - sh
+    - -ec
+    - |
+      program_path=$(mktemp)
+      printf "%s" "$0" > "$program_path"
+      python3 -u "$program_path" "$@"
+    - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n   \
+      \ os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+      \ndef evaluate_model(test_data , \n                   model_input ,\n      \
+      \             mlpipeline_metrics ):\n    import pandas as pd\n    import joblib\n\
+      \    from sklearn.metrics import mean_squared_error, r2_score\n    import json\n\
+      \    import os\n\n    df = pd.read_csv(test_data)\n    X_test = df.drop('target',\
+      \ axis=1)\n    y_test = df['target']\n\n    model = joblib.load(model_input)\n\
+      \n    predictions = model.predict(X_test)\n\n    mse = mean_squared_error(y_test,\
+      \ predictions)\n    r2 = r2_score(y_test, predictions)\n\n    metrics = {\n\
+      \        'metrics': [\n            {'name': 'MSE', 'numberValue': mse, 'format':\
+      \ 'RAW'},\n            {'name': 'R2_Score', 'numberValue': r2, 'format': 'RAW'},\n\
+      \        ]\n    }\n\n    with open(mlpipeline_metrics, 'w') as f:\n        json.dump(metrics,\
+      \ f)\n\n    print(f\"Evaluation Results -> MSE: {mse}, R2: {r2}\")\n\nimport\
+      \ argparse\n_parser = argparse.ArgumentParser(prog='Evaluate model', description='')\n\
+      _parser.add_argument(\"--test-data\", dest=\"test_data\", type=str, required=True,\
+      \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--model-input\", dest=\"\
+      model_input\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+      --mlpipeline-metrics\", dest=\"mlpipeline_metrics\", type=_make_parent_dirs_and_return_path,\
+      \ required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\
+      \n_outputs = evaluate_model(**_parsed_args)\n"
+    args:
+    - --test-data
+    - {inputPath: test_data}
+    - --model-input
+    - {inputPath: model_input}
+    - --mlpipeline-metrics
+    - {outputPath: mlpipeline_metrics}

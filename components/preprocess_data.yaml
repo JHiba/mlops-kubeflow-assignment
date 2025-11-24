@@ -1,0 +1,45 @@
+name: Preprocess data
+inputs:
+- {name: input_csv, type: CSV}
+outputs:
+- {name: train_data, type: CSV}
+- {name: test_data, type: CSV}
+implementation:
+  container:
+    image: docker.io/library/mlops-custom:v1
+    command:
+    - sh
+    - -ec
+    - |
+      program_path=$(mktemp)
+      printf "%s" "$0" > "$program_path"
+      python3 -u "$program_path" "$@"
+    - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n   \
+      \ os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+      \ndef preprocess_data(input_csv , \n                    train_data ,\n     \
+      \               test_data ):\n    import pandas as pd\n    from sklearn.model_selection\
+      \ import train_test_split\n    from sklearn.preprocessing import StandardScaler\n\
+      \    import os\n\n    os.makedirs(os.path.dirname(train_data), exist_ok=True)\n\
+      \    os.makedirs(os.path.dirname(test_data), exist_ok=True)\n\n    df = pd.read_csv(input_csv)\n\
+      \    df = df.dropna()\n\n    X = df.drop('target', axis=1)\n    y = df['target']\n\
+      \n    scaler = StandardScaler()\n    X_scaled = scaler.fit_transform(X)\n  \
+      \  X = pd.DataFrame(X_scaled, columns=X.columns)\n\n    X_train, X_test, y_train,\
+      \ y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n\n    train_df\
+      \ = pd.concat([X_train, y_train.reset_index(drop=True)], axis=1)\n    test_df\
+      \ = pd.concat([X_test, y_test.reset_index(drop=True)], axis=1)\n\n    train_df.to_csv(train_data,\
+      \ index=False)\n    test_df.to_csv(test_data, index=False)\n    print(\"Data\
+      \ Preprocessing Complete\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Preprocess\
+      \ data', description='')\n_parser.add_argument(\"--input-csv\", dest=\"input_csv\"\
+      , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+      --train-data\", dest=\"train_data\", type=_make_parent_dirs_and_return_path,\
+      \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--test-data\"\
+      , dest=\"test_data\", type=_make_parent_dirs_and_return_path, required=True,\
+      \ default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n\
+      _outputs = preprocess_data(**_parsed_args)\n"
+    args:
+    - --input-csv
+    - {inputPath: input_csv}
+    - --train-data
+    - {outputPath: train_data}
+    - --test-data
+    - {outputPath: test_data}

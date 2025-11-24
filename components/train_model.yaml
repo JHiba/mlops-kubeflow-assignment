@@ -1,0 +1,34 @@
+name: Train model
+inputs:
+- {name: train_data, type: CSV}
+outputs:
+- {name: model_output, type: Model}
+implementation:
+  container:
+    image: docker.io/library/mlops-custom:v1
+    command:
+    - sh
+    - -ec
+    - |
+      program_path=$(mktemp)
+      printf "%s" "$0" > "$program_path"
+      python3 -u "$program_path" "$@"
+    - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n   \
+      \ os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+      \ndef train_model(train_data , \n                model_output ):\n    import\
+      \ pandas as pd\n    from sklearn.ensemble import RandomForestRegressor\n   \
+      \ import joblib\n    import os\n\n    os.makedirs(os.path.dirname(model_output),\
+      \ exist_ok=True)\n\n    df = pd.read_csv(train_data)\n    X_train = df.drop('target',\
+      \ axis=1)\n    y_train = df['target']\n\n    model = RandomForestRegressor(n_estimators=100,\
+      \ max_depth=10, random_state=42)\n    model.fit(X_train, y_train)\n\n    joblib.dump(model,\
+      \ model_output)\n    print(f\"Model Trained.\")\n\nimport argparse\n_parser\
+      \ = argparse.ArgumentParser(prog='Train model', description='')\n_parser.add_argument(\"\
+      --train-data\", dest=\"train_data\", type=str, required=True, default=argparse.SUPPRESS)\n\
+      _parser.add_argument(\"--model-output\", dest=\"model_output\", type=_make_parent_dirs_and_return_path,\
+      \ required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\
+      \n_outputs = train_model(**_parsed_args)\n"
+    args:
+    - --train-data
+    - {inputPath: train_data}
+    - --model-output
+    - {outputPath: model_output}

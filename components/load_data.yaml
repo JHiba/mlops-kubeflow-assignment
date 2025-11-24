@@ -1,0 +1,48 @@
+name: Load data
+outputs:
+- {name: output_csv, type: CSV}
+implementation:
+  container:
+    image: docker.io/library/mlops-custom:v1
+    command:
+    - sh
+    - -ec
+    - |
+      program_path=$(mktemp)
+      printf "%s" "$0" > "$program_path"
+      python3 -u "$program_path" "$@"
+    - |
+      def _make_parent_dirs_and_return_path(file_path: str):
+          import os
+          os.makedirs(os.path.dirname(file_path), exist_ok=True)
+          return file_path
+
+      def load_data(output_csv ):
+          import pandas as pd
+          from sklearn.datasets import make_regression
+          import os
+
+          # Ensure directory exists
+          os.makedirs(os.path.dirname(output_csv), exist_ok=True)
+
+          print("Generating data (Real Logic)...")
+          # Using make_regression to simulate the housing data locally
+          X, y = make_regression(n_samples=200, n_features=8, noise=0.1, random_state=42)
+
+          cols = ['MedInc', 'HouseAge', 'AveRooms', 'AveBedrms', 'Population', 'AveOccup', 'Latitude', 'Longitude']
+          df = pd.DataFrame(X, columns=cols)
+          df['target'] = y
+
+          # Save locally
+          df.to_csv(output_csv, index=False)
+          print(f"Data generated. Rows: {len(df)}")
+
+      import argparse
+      _parser = argparse.ArgumentParser(prog='Load data', description='')
+      _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+      _parsed_args = vars(_parser.parse_args())
+
+      _outputs = load_data(**_parsed_args)
+    args:
+    - --output-csv
+    - {outputPath: output_csv}
