@@ -1,10 +1,7 @@
 name: MLOps Assignment CI
 
-# Trigger the workflow on push to main branch
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
     branches: [ "main" ]
 
 jobs:
@@ -12,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Stage 1: Environment Setup
     - name: Checkout Code
       uses: actions/checkout@v3
 
@@ -26,13 +22,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # Stage 2: Pipeline Compilation
+    - name: Generate Components (The Fix)
+      run: |
+        # This ensures the YAML files exist before we use them
+        python src/pipeline_components.py
+
     - name: Compile Pipeline
       run: |
-        # This runs your python script to ensure it generates the YAML without errors
         python pipeline.py
     
     - name: Verify Output
       run: |
-        # Check if pipeline.yaml was actually created
         ls -l pipeline.yaml

@@ -1,5 +1,5 @@
-kfp
-dvc
-scikit-learn
+kfp==1.8.22
 pandas
-numpy
+scikit-learn
+dvc
+joblib
