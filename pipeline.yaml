@@ -1,0 +1,317 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: offline-pipeline-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.23, pipelines.kubeflow.org/pipeline_compilation_time: '2025-11-24T22:54:23.684675',
+    pipelines.kubeflow.org/pipeline_spec: '{"description": "Runs real code using local
+      custom image.", "name": "Offline Pipeline"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.23}
+spec:
+  entrypoint: offline-pipeline
+  templates:
+  - name: evaluate-model
+    container:
+      args: [--test-data, /tmp/inputs/test_data/data, --model-input, /tmp/inputs/model_input/data,
+        --mlpipeline-metrics, /tmp/outputs/mlpipeline_metrics/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef evaluate_model(test_data , \n                   model_input ,\n    \
+        \               mlpipeline_metrics ):\n    import pandas as pd\n    import\
+        \ joblib\n    from sklearn.metrics import mean_squared_error, r2_score\n \
+        \   import json\n    import os\n\n    df = pd.read_csv(test_data)\n    X_test\
+        \ = df.drop('target', axis=1)\n    y_test = df['target']\n\n    model = joblib.load(model_input)\n\
+        \n    predictions = model.predict(X_test)\n\n    mse = mean_squared_error(y_test,\
+        \ predictions)\n    r2 = r2_score(y_test, predictions)\n\n    metrics = {\n\
+        \        'metrics': [\n            {'name': 'MSE', 'numberValue': mse, 'format':\
+        \ 'RAW'},\n            {'name': 'R2_Score', 'numberValue': r2, 'format': 'RAW'},\n\
+        \        ]\n    }\n\n    with open(mlpipeline_metrics, 'w') as f:\n      \
+        \  json.dump(metrics, f)\n\n    print(f\"Evaluation Results -> MSE: {mse},\
+        \ R2: {r2}\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Evaluate\
+        \ model', description='')\n_parser.add_argument(\"--test-data\", dest=\"test_data\"\
+        , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --model-input\", dest=\"model_input\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--mlpipeline-metrics\", dest=\"mlpipeline_metrics\"\
+        , type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parsed_args = vars(_parser.parse_args())\n\n_outputs = evaluate_model(**_parsed_args)\n"
+      image: docker.io/library/mlops-custom:v1
+      imagePullPolicy: Never
+    inputs:
+      artifacts:
+      - {name: train-model-model_output, path: /tmp/inputs/model_input/data}
+      - {name: preprocess-data-test_data, path: /tmp/inputs/test_data/data}
+    outputs:
+      artifacts:
+      - {name: mlpipeline-metrics, path: /tmp/outputs/mlpipeline_metrics/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.23
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--test-data", {"inputPath": "test_data"}, "--model-input", {"inputPath":
+          "model_input"}, "--mlpipeline-metrics", {"outputPath": "mlpipeline_metrics"}],
+          "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" >
+          \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef evaluate_model(test_data , \n                   model_input
+          ,\n                   mlpipeline_metrics ):\n    import pandas as pd\n    import
+          joblib\n    from sklearn.metrics import mean_squared_error, r2_score\n    import
+          json\n    import os\n\n    df = pd.read_csv(test_data)\n    X_test = df.drop(''target'',
+          axis=1)\n    y_test = df[''target'']\n\n    model = joblib.load(model_input)\n\n    predictions
+          = model.predict(X_test)\n\n    mse = mean_squared_error(y_test, predictions)\n    r2
+          = r2_score(y_test, predictions)\n\n    metrics = {\n        ''metrics'':
+          [\n            {''name'': ''MSE'', ''numberValue'': mse, ''format'': ''RAW''},\n            {''name'':
+          ''R2_Score'', ''numberValue'': r2, ''format'': ''RAW''},\n        ]\n    }\n\n    with
+          open(mlpipeline_metrics, ''w'') as f:\n        json.dump(metrics, f)\n\n    print(f\"Evaluation
+          Results -> MSE: {mse}, R2: {r2}\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Evaluate
+          model'', description='''')\n_parser.add_argument(\"--test-data\", dest=\"test_data\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--model-input\",
+          dest=\"model_input\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--mlpipeline-metrics\",
+          dest=\"mlpipeline_metrics\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = evaluate_model(**_parsed_args)\n"], "image": "docker.io/library/mlops-custom:v1"}},
+          "inputs": [{"name": "test_data", "type": "CSV"}, {"name": "model_input",
+          "type": "Model"}], "name": "Evaluate model", "outputs": [{"name": "mlpipeline_metrics",
+          "type": "Metrics"}]}', pipelines.kubeflow.org/component_ref: '{"digest":
+          "f2698fb327928076b3c76beb531257e58b0e14b5413dc71ef16cef1d4fdcfb66", "url":
+          "components/evaluate_model.yaml"}'}
+  - name: load-data
+    container:
+      args: [--output-csv, /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def load_data(output_csv ):
+            import pandas as pd
+            from sklearn.datasets import make_regression
+            import os
+
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(output_csv), exist_ok=True)
+
+            print("Generating data (Real Logic)...")
+            # Using make_regression to simulate the housing data locally
+            X, y = make_regression(n_samples=200, n_features=8, noise=0.1, random_state=42)
+
+            cols = ['MedInc', 'HouseAge', 'AveRooms', 'AveBedrms', 'Population', 'AveOccup', 'Latitude', 'Longitude']
+            df = pd.DataFrame(X, columns=cols)
+            df['target'] = y
+
+            # Save locally
+            df.to_csv(output_csv, index=False)
+            print(f"Data generated. Rows: {len(df)}")
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Load data', description='')
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = load_data(**_parsed_args)
+      image: docker.io/library/mlops-custom:v1
+      imagePullPolicy: Never
+    outputs:
+      artifacts:
+      - {name: load-data-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.23
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--output-csv", {"outputPath": "output_csv"}], "command": ["sh",
+          "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef load_data(output_csv ):\n    import pandas as pd\n    from
+          sklearn.datasets import make_regression\n    import os\n\n    # Ensure directory
+          exists\n    os.makedirs(os.path.dirname(output_csv), exist_ok=True)\n\n    print(\"Generating
+          data (Real Logic)...\")\n    # Using make_regression to simulate the housing
+          data locally\n    X, y = make_regression(n_samples=200, n_features=8, noise=0.1,
+          random_state=42)\n\n    cols = [''MedInc'', ''HouseAge'', ''AveRooms'',
+          ''AveBedrms'', ''Population'', ''AveOccup'', ''Latitude'', ''Longitude'']\n    df
+          = pd.DataFrame(X, columns=cols)\n    df[''target''] = y\n\n    # Save locally\n    df.to_csv(output_csv,
+          index=False)\n    print(f\"Data generated. Rows: {len(df)}\")\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Load data'', description='''')\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = load_data(**_parsed_args)\n"], "image": "docker.io/library/mlops-custom:v1"}},
+          "name": "Load data", "outputs": [{"name": "output_csv", "type": "CSV"}]}',
+        pipelines.kubeflow.org/component_ref: '{"digest": "a88c4418f20491ec4a8bf3ad4ffef50dbf6b097496756e089791ef081e2834d8",
+          "url": "components/load_data.yaml"}'}
+  - name: offline-pipeline
+    dag:
+      tasks:
+      - name: evaluate-model
+        template: evaluate-model
+        dependencies: [preprocess-data, train-model]
+        arguments:
+          artifacts:
+          - {name: preprocess-data-test_data, from: '{{tasks.preprocess-data.outputs.artifacts.preprocess-data-test_data}}'}
+          - {name: train-model-model_output, from: '{{tasks.train-model.outputs.artifacts.train-model-model_output}}'}
+      - {name: load-data, template: load-data}
+      - name: preprocess-data
+        template: preprocess-data
+        dependencies: [load-data]
+        arguments:
+          artifacts:
+          - {name: load-data-output_csv, from: '{{tasks.load-data.outputs.artifacts.load-data-output_csv}}'}
+      - name: train-model
+        template: train-model
+        dependencies: [preprocess-data]
+        arguments:
+          artifacts:
+          - {name: preprocess-data-train_data, from: '{{tasks.preprocess-data.outputs.artifacts.preprocess-data-train_data}}'}
+  - name: preprocess-data
+    container:
+      args: [--input-csv, /tmp/inputs/input_csv/data, --train-data, /tmp/outputs/train_data/data,
+        --test-data, /tmp/outputs/test_data/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef preprocess_data(input_csv , \n                    train_data ,\n   \
+        \                 test_data ):\n    import pandas as pd\n    from sklearn.model_selection\
+        \ import train_test_split\n    from sklearn.preprocessing import StandardScaler\n\
+        \    import os\n\n    os.makedirs(os.path.dirname(train_data), exist_ok=True)\n\
+        \    os.makedirs(os.path.dirname(test_data), exist_ok=True)\n\n    df = pd.read_csv(input_csv)\n\
+        \    df = df.dropna()\n\n    X = df.drop('target', axis=1)\n    y = df['target']\n\
+        \n    scaler = StandardScaler()\n    X_scaled = scaler.fit_transform(X)\n\
+        \    X = pd.DataFrame(X_scaled, columns=X.columns)\n\n    X_train, X_test,\
+        \ y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n\
+        \n    train_df = pd.concat([X_train, y_train.reset_index(drop=True)], axis=1)\n\
+        \    test_df = pd.concat([X_test, y_test.reset_index(drop=True)], axis=1)\n\
+        \n    train_df.to_csv(train_data, index=False)\n    test_df.to_csv(test_data,\
+        \ index=False)\n    print(\"Data Preprocessing Complete\")\n\nimport argparse\n\
+        _parser = argparse.ArgumentParser(prog='Preprocess data', description='')\n\
+        _parser.add_argument(\"--input-csv\", dest=\"input_csv\", type=str, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--train-data\", dest=\"\
+        train_data\", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--test-data\", dest=\"test_data\", type=_make_parent_dirs_and_return_path,\
+        \ required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\
+        \n_outputs = preprocess_data(**_parsed_args)\n"
+      image: docker.io/library/mlops-custom:v1
+      imagePullPolicy: Never
+    inputs:
+      artifacts:
+      - {name: load-data-output_csv, path: /tmp/inputs/input_csv/data}
+    outputs:
+      artifacts:
+      - {name: preprocess-data-test_data, path: /tmp/outputs/test_data/data}
+      - {name: preprocess-data-train_data, path: /tmp/outputs/train_data/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.23
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-csv", {"inputPath": "input_csv"}, "--train-data", {"outputPath":
+          "train_data"}, "--test-data", {"outputPath": "test_data"}], "command": ["sh",
+          "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef preprocess_data(input_csv , \n                    train_data
+          ,\n                    test_data ):\n    import pandas as pd\n    from sklearn.model_selection
+          import train_test_split\n    from sklearn.preprocessing import StandardScaler\n    import
+          os\n\n    os.makedirs(os.path.dirname(train_data), exist_ok=True)\n    os.makedirs(os.path.dirname(test_data),
+          exist_ok=True)\n\n    df = pd.read_csv(input_csv)\n    df = df.dropna()\n\n    X
+          = df.drop(''target'', axis=1)\n    y = df[''target'']\n\n    scaler = StandardScaler()\n    X_scaled
+          = scaler.fit_transform(X)\n    X = pd.DataFrame(X_scaled, columns=X.columns)\n\n    X_train,
+          X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n\n    train_df
+          = pd.concat([X_train, y_train.reset_index(drop=True)], axis=1)\n    test_df
+          = pd.concat([X_test, y_test.reset_index(drop=True)], axis=1)\n\n    train_df.to_csv(train_data,
+          index=False)\n    test_df.to_csv(test_data, index=False)\n    print(\"Data
+          Preprocessing Complete\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Preprocess
+          data'', description='''')\n_parser.add_argument(\"--input-csv\", dest=\"input_csv\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--train-data\",
+          dest=\"train_data\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--test-data\", dest=\"test_data\",
+          type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = preprocess_data(**_parsed_args)\n"],
+          "image": "docker.io/library/mlops-custom:v1"}}, "inputs": [{"name": "input_csv",
+          "type": "CSV"}], "name": "Preprocess data", "outputs": [{"name": "train_data",
+          "type": "CSV"}, {"name": "test_data", "type": "CSV"}]}', pipelines.kubeflow.org/component_ref: '{"digest":
+          "9e9391e0869cea4bec3273e84046678041e5c3e94644948f106f22cf2c27ccfe", "url":
+          "components/preprocess_data.yaml"}'}
+  - name: train-model
+    container:
+      args: [--train-data, /tmp/inputs/train_data/data, --model-output, /tmp/outputs/model_output/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef train_model(train_data , \n                model_output ):\n    import\
+        \ pandas as pd\n    from sklearn.ensemble import RandomForestRegressor\n \
+        \   import joblib\n    import os\n\n    os.makedirs(os.path.dirname(model_output),\
+        \ exist_ok=True)\n\n    df = pd.read_csv(train_data)\n    X_train = df.drop('target',\
+        \ axis=1)\n    y_train = df['target']\n\n    model = RandomForestRegressor(n_estimators=100,\
+        \ max_depth=10, random_state=42)\n    model.fit(X_train, y_train)\n\n    joblib.dump(model,\
+        \ model_output)\n    print(f\"Model Trained.\")\n\nimport argparse\n_parser\
+        \ = argparse.ArgumentParser(prog='Train model', description='')\n_parser.add_argument(\"\
+        --train-data\", dest=\"train_data\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--model-output\", dest=\"model_output\", type=_make_parent_dirs_and_return_path,\
+        \ required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\
+        \n_outputs = train_model(**_parsed_args)\n"
+      image: docker.io/library/mlops-custom:v1
+      imagePullPolicy: Never
+    inputs:
+      artifacts:
+      - {name: preprocess-data-train_data, path: /tmp/inputs/train_data/data}
+    outputs:
+      artifacts:
+      - {name: train-model-model_output, path: /tmp/outputs/model_output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.23
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--train-data", {"inputPath": "train_data"}, "--model-output",
+          {"outputPath": "model_output"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef train_model(train_data , \n                model_output
+          ):\n    import pandas as pd\n    from sklearn.ensemble import RandomForestRegressor\n    import
+          joblib\n    import os\n\n    os.makedirs(os.path.dirname(model_output),
+          exist_ok=True)\n\n    df = pd.read_csv(train_data)\n    X_train = df.drop(''target'',
+          axis=1)\n    y_train = df[''target'']\n\n    model = RandomForestRegressor(n_estimators=100,
+          max_depth=10, random_state=42)\n    model.fit(X_train, y_train)\n\n    joblib.dump(model,
+          model_output)\n    print(f\"Model Trained.\")\n\nimport argparse\n_parser
+          = argparse.ArgumentParser(prog=''Train model'', description='''')\n_parser.add_argument(\"--train-data\",
+          dest=\"train_data\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--model-output\",
+          dest=\"model_output\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = train_model(**_parsed_args)\n"], "image": "docker.io/library/mlops-custom:v1"}},
+          "inputs": [{"name": "train_data", "type": "CSV"}], "name": "Train model",
+          "outputs": [{"name": "model_output", "type": "Model"}]}', pipelines.kubeflow.org/component_ref: '{"digest":
+          "1363040fcf95dd95c469579937c80acb1b979b4bced6420f4adc7908c68f54d3", "url":
+          "components/train_model.yaml"}'}
+  arguments:
+    parameters: []
+  serviceAccountName: pipeline-runner

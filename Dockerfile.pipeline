@@ -1,0 +1,5 @@
+# Use the python version we know you have
+FROM python:3.9
+
+# Install the libraries your code needs (using your PC's internet)
+RUN pip install pandas scikit-learn joblib dvc
