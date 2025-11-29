@@ -110,3 +110,30 @@ Generates component configurations.
 Compiles the pipeline to verify syntax integrity.
 
 Check the [Actions Tab] in this repository to see the build status history
+
+---
+
+## MLflow Experiment Tracking
+
+This project integrates **MLflow** for experiment tracking and visualization.
+
+### Run Training with MLflow
+Execute the training script that logs metrics, parameters, and visualizations:
+```bash
+python train_with_mlflow.py
+```
+
+### Access MLflow UI
+Open your browser to: **http://localhost:5000**
+
+### What MLflow Tracks:
+- **Metrics**: MSE, RMSE, MAE, R² Score
+- **Parameters**: Model configuration (n_estimators, max_depth, etc.)
+- **Artifacts**: 
+  - Actual vs Predicted plot
+  - Residual plot
+  - Feature importance chart
+  - Metrics summary visualization
+- **Model**: Trained Random Forest model artifact
+
+This provides a professional experiment tracking system for reproducible ML workflows.
